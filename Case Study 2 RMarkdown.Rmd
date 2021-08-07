@@ -1,0 +1,391 @@
+---
+title: "DDSAnalytics Study"
+author: "Kevin Albright"
+date: "7/21/2021"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+---
+
+##DDSAnalytics is an analytics company specializing in talent management solutions for Fortune 100 companies. 
+ Goal is to conduct analysis of existing employee data to highlight turnover
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+#install.packages("tidyverse")
+#install.packages("ggthemes")
+#install.packages("GGally")
+#install.packages("viridis")
+#install.packages("class")
+#install.packages("caret")
+#install.packages("prettydoc")
+#install.packages("kable_extra")
+#install.packages("plotly")
+#install.packages("e1071")
+#install.packages("randomForest")
+library(class)
+library(randomForest)
+library(scales)
+library(caret)
+library(e1071)
+library(class)
+library(plotly)
+library(kableExtra)
+library(caret)
+library(e1071)
+library(viridis)
+library(ggthemes)
+library(GGally)
+library(usdata)
+library(tidyverse)
+library(dplyr)
+library(sqldf)
+library(prettydoc)
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+##Load Case Study 2 data set
+```{r fig.width=10,fig.height=7,warning=FALSE, message=FALSE}
+#Read in Attrition Data
+Attrition = read.csv("/Users/Kevin/Desktop/School/Doing Data Science/Project 2/CaseStudy2_data.csv", header = TRUE)
+NOAttrition = read.csv("/Users/Kevin/Desktop/School/Doing Data Science/Project 2/CaseStudy2CompSet No Attrition.csv", header = TRUE)
+AttritionNo = sqldf('
+                    select *
+                    from Attrition
+                    where "Attrition" = "No"
+                    ')
+AttritionYes = sqldf('
+                    select *
+                    from Attrition
+                    where "Attrition" = "Yes"
+                    ')
+```
+Parse and Summarize data
+```{r fig.width=10,fig.height=7,warning=FALSE, message=FALSE}
+Attrition %>%
+  group_by(Attrition) %>%
+  summarize(MeanCompanysWorked = mean(NumCompaniesWorked),
+            MeanMonthlyIncome = mean(MonthlyIncome),
+            MeanYearsAtCompany = mean(YearsAtCompany),
+            MeanWorkAge = mean(Age),
+            MeanTotalWorkingYears = mean(TotalWorkingYears),
+            MeanJobLevel = mean(JobLevel),
+            MeanPerformance = mean(PerformanceRating),
+            MeanYearsSincePromotion = mean(YearsInCurrentRole),
+            MeanSalaryHike = mean(PercentSalaryHike),
+            Total = n()) %>%
+  arrange(Attrition,Total)
+```
+Plot relationships
+```{r fig.width=10,fig.height=7,warning=FALSE, message=FALSE}
+AttritionStats = Attrition %>%
+  group_by(Attrition) %>%
+  summarize(
+            MeanAge = mean(Age),
+            MeanMonthlyIncome = mean(MonthlyIncome),
+            MeanWorkingYears = mean(TotalWorkingYears),
+            MeanJobLevel = mean(JobLevel),
+            MeanPerformance = mean(PerformanceRating),
+            MeanYearsSincePromotion = mean(YearsInCurrentRole),
+            MeanSalaryHike = mean(PercentSalaryHike),
+            Total = n()) %>%
+  arrange(Attrition,Total)
+kable(AttritionStats,position = "left")
+
+TravelStats = Attrition %>%
+  group_by(Attrition,BusinessTravel) %>%
+  summarize(TotalPop= n(),
+            MeanWorkAge = mean(Age),
+            MeanWorkLifeBalance = mean(WorkLifeBalance),
+            MeanJobSatisfaction = mean(JobSatisfaction),
+            MeanTotalWorkingYears = mean(TotalWorkingYears),
+            MeanMonthlyIncome = mean(MonthlyIncome),
+            MeanYearsAtCompany = mean(YearsAtCompany),
+            MeanTotalWorkingYears = mean(TotalWorkingYears),
+            MeanJobLevel = mean(JobLevel),
+            MeanPerformance = mean(PerformanceRating),
+            MeanYearsSincePromotion = mean(YearsInCurrentRole),
+            MeanSalaryHike = mean(PercentSalaryHike),
+            Total = n()) %>%
+  arrange(Attrition,Total)
+kable(TravelStats,position = "left")
+
+
+
+JobRoleStats = Attrition %>%
+  group_by(Attrition,JobRole) %>%
+  summarize(TotalPop= n(),
+            MeanWorkAge = mean(Age),
+            MeanWorkLifeBalance = mean(WorkLifeBalance),
+            MeanJobSatisfaction = mean(JobSatisfaction),
+            MeanTotalWorkingYears = mean(TotalWorkingYears),
+            MeanMonthlyIncome = mean(MonthlyIncome),
+            MeanYearsAtCompany = mean(YearsAtCompany),
+            MeanTotalWorkingYears = mean(TotalWorkingYears),
+            MeanJobLevel = mean(JobLevel),
+            MeanPerformance = mean(PerformanceRating),
+            MeanYearsSincePromotion = mean(YearsInCurrentRole),
+            MeanSalaryHike = mean(PercentSalaryHike),
+            Total = n()) %>%
+  arrange(Attrition,Total)
+kable(JobRoleStats,position = "left")
+
+OvertimeStats = Attrition %>%
+  group_by(Attrition,OverTime) %>%
+  summarize(TotalPop= n(),
+            MeanWorkAge = mean(Age),
+            MeanTotalWorkingYears = mean(TotalWorkingYears),
+            MeanMonthlyIncome = mean(MonthlyIncome),
+            MeanYearsAtCompany = mean(YearsAtCompany),
+            MeanTotalWorkingYears = mean(TotalWorkingYears),
+            MeanJobLevel = mean(JobLevel),
+            MeanPerformance = mean(PerformanceRating),
+            MeanYearsSincePromotion = mean(YearsInCurrentRole),
+            MeanSalaryHike = mean(PercentSalaryHike),
+            Total = n()) %>%
+  arrange(Attrition,Total)
+kable(OvertimeStats,position = "left")
+
+
+Attrition %>% ggplot(aes(x = Attrition,y = TotalWorkingYears)) + 
+  geom_boxplot(color = "blue", fill = "black") + ggtitle("Attrition based on Years in Workforce")
+
+Attrition %>% ggplot(aes(x = Attrition,y = MonthlyRate)) + 
+  geom_boxplot(color = "blue", fill = "black") + ggtitle("Attrition based on Monthly Rate") 
+
+Attrition %>% ggplot(aes(x = Attrition,y = YearsInCurrentRole)) + 
+  geom_boxplot(color = "blue", fill = "black") + ggtitle("Attrition based on Years in Current Role")
+
+TravelStats %>% ggplot(aes(x = Attrition, y = TotalPop, fill=BusinessTravel)) + 
+  geom_bar(stat="identity") + ggtitle("Attrition based on Travel")
+
+TravelStats %>% 
+  ggplot(aes(x = reorder(BusinessTravel,TotalPop), y = TotalPop, fill=Attrition)) + 
+  geom_bar(stat="identity") + coord_flip() +
+  ggtitle("Business Travel Turnover")  + xlab("Travel") + ylab("Total Population")
+
+OvertimeStats %>% ggplot(aes(x = Attrition, y = TotalPop,fill = OverTime)) + geom_bar(stat="identity") + 
+  ggtitle("Overtime vs No Overtime") 
+
+Attrition %>% ggplot(aes(x=Age, y=MonthlyIncome)) + 
+  geom_point(aes(x=Age, y=MonthlyIncome, color=Attrition))+
+  ggtitle('Age vs Monthly Income') +
+  scale_color_discrete(name="Attrition") + 
+  facet_wrap(~Attrition, scales="free")
+
+Attrition %>% ggplot(aes(x = reorder(JobRole,MonthlyIncome), y = MonthlyIncome,fill=JobRole))+
+  geom_boxplot()+
+  coord_flip()  +
+  ggtitle('Job Role vs Monthly Income') +xlab("Job Role") + ylab("Monthly Income")
+
+JobRoleStatsYes = JobRoleStats %>% filter(Attrition=="Yes") %>% arrange(-TotalPop)
+JobRoleStatsNo = JobRoleStats %>% filter(Attrition=="No") %>% arrange(-TotalPop)
+
+JobRoleStats %>% ggplot(aes(x = reorder(JobRole,MeanJobSatisfaction), y = MeanJobSatisfaction, fill=JobRole))+
+  geom_boxplot()+
+  coord_flip()  +
+  ggtitle('Job Role vs Satisfaction') +xlab("Job Role") + ylab("Job Satisfaction")
+
+JobRoleStats %>% ggplot(aes(x = reorder(JobRole,MeanWorkLifeBalance), y = MeanWorkLifeBalance, fill=JobRole))+
+  geom_boxplot()+
+  coord_flip()  +
+  ggtitle('Job Role vs Work Life Balance') +xlab("Job Role") + ylab("Work Life Balance")
+
+JobRoleStatsYes %>% ggplot(aes(x = reorder(JobRole,TotalPop), y = TotalPop, fill=JobRole)) + geom_bar(stat="identity") + 
+  coord_flip() + ggtitle("Attrition by Job Role") + xlab("Job Role") + ylab("Total Population")
+
+JobRoleStatsYes %>% ggplot(aes(x = reorder(JobRole,-MeanWorkLifeBalance), y = MeanWorkLifeBalance, fill=JobRole)) + geom_bar(stat="identity") + 
+  coord_flip() + ggtitle("Work Life Balance by Job Role") + xlab("Job Role") + ylab("Total Population")
+
+JobRoleStatsNo %>% ggplot(aes(x = reorder(JobRole,TotalPop), y = TotalPop, fill=JobRole)) + geom_bar(stat="identity") + 
+  coord_flip() + ggtitle("Attrition by Job Role") + xlab("Job Role") + ylab("Total Population")
+
+JobRoleStatsNo %>% ggplot(aes(x = reorder(JobRole,-MeanWorkLifeBalance), y = MeanWorkLifeBalance, fill=JobRole)) + geom_bar(stat="identity") + 
+  coord_flip() + ggtitle("Work Life Balance by Job Role") + xlab("Job Role") + ylab("Total Population")
+
+p <- plot_ly(Attrition, x = ~TotalWorkingYears, y = ~Age, z = ~MonthlyIncome, color = ~JobRole) %>%
+  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'WorkingYears'),
+                      yaxis = list(title = 'Age'),
+                      zaxis = list(title = 'MonthyIncome')))
+p
+
+```
+#Perform Classification using KNN
+```{r fig.width=10,fig.height=7,warning=FALSE, message=FALSE}
+
+#Model Data using KNN for Age and Monthly Income
+
+  ##Plot Relationship Betwen Age and Monthly Income
+Attrition %>% ggplot(aes(x = Age,y=MonthlyIncome,color = Attrition)) + geom_point() + xlab("Age") + geom_smooth(method="lm") + ylab("Monthly Income") + 
+  ggtitle("Relationship Between Age and Monthly Income") +
+  scale_y_continuous(label=comma)
+
+#Split out training/test data - 70/30
+set.seed(100)
+splitPerc = .70
+trainAttrition= sample(1:dim(Attrition)[1],round(splitPerc * dim(Attrition)[1]))
+train = Attrition[trainAttrition,]
+test = Attrition[-trainAttrition,]
+
+accs = data.frame(accuracy = numeric(90), k = numeric(90))
+
+#Formulate the optimal k value for KNN
+for(i in 1:90)
+{
+  classifications = knn(train[,c(2,20)],test[,c(2,20)],train$Attrition, prob = TRUE, k = i)
+  table(test$Attrition,classifications)
+  CM = confusionMatrix(table(test$Attrition,classifications))
+  accs$accuracy[i] = CM$overall[1]
+  accs$k[i] = i
+}
+plot(accs$k,accs$accuracy, type = "l", xlab = "k") 
+abline(v=accs$k[which.max(accs$accuracy)], col="red")
+accs$k[which.max(accs$accuracy)]
+
+splitPerc = .70
+trainAttrition= sample(1:dim(Attrition)[1],round(splitPerc * dim(Attrition)[1]))
+train = Attrition[trainAttrition,]
+test = Attrition[-trainAttrition,]
+
+classification = knn(Attrition[,c(2,20)],Attrition[,c(2,20)],Attrition$Attrition,prob = TRUE, k = 5)
+
+table(classification,Attrition$Attrition)
+confusionMatrix(table(classification,Attrition$Attrition))
+```
+#Perform Classification using Random Forest
+```{r fig.width=10,fig.height=7,warning=FALSE, message=FALSE}
+
+#Model Data with Random Forest
+  ##Read in Data
+Attrition = read.csv("/Users/Kevin/Desktop/School/Doing Data Science/Project 2/CaseStudy2_data.csv", header = TRUE)
+NOAttrition= read.csv("/Users/Kevin/Desktop/School/Doing Data Science/Project 2/CaseStudy2CompSet No Attrition.csv", header = TRUE)
+
+#Ensure Attrition is changed to factor
+Attrition$Attrition =  factor(as.character(Attrition$Attrition), levels=c("Yes", "No"))
+
+Attrition_Variables = randomForest(Attrition~ .-MonthlyIncome, 
+                                   data=Attrition, ntree=1000, 
+                                   keep.forest=FALSE,
+                                   importance=TRUE)
+varImpPlot(Attrition_Variables)
+
+
+
+#Split test and train data - 70/30
+set.seed(3033)
+splitPerc = .70
+trainAttrition= sample(1:dim(Attrition)[1],round(splitPerc * dim(Attrition)[1]))
+train = Attrition[trainAttrition,]
+test = Attrition[-trainAttrition,]
+
+#Apply Random Forest using Monthly Income to test data
+EmpAtt = randomForest(Attrition ~ .-Age, 
+                      data=train, 
+                      strata=train$Attrition, 
+                      sampsize= c(60,60))
+
+  #Use newly trained data set to predict test set
+AttPredict = predict(EmpAtt, 
+                     newdata= test)
+
+  #Create confusion matrix to assess accuracy stats
+confusionMatrix(AttPredict, test$Attrition)
+
+
+#Apply Random Forest to the output file
+EmpAtt2 = randomForest(Attrition ~ .-Age, 
+                       data=Attrition, 
+                       strata=Attrition$Attrition, 
+                       sampsize= c(60,60))
+
+AttPredict2 = predict(EmpAtt2, 
+                      newdata= NOAttrition)
+
+
+
+
+
+EmpAttPreds = data.frame(NOAttrition$ID, AttPredict2)
+#EmpAttPreds
+
+#write.csv(EmpAttritionPreds, "/Users/Kevin/Desktop/School/Doing Data Science/Project 2/Case2PredictionsAlbrightAttrition.csv")
+
+```
+Linear Regression Model vs Random Forest for Predicting Salary
+```{r fig.width=10,fig.height=7,warning=FALSE, message=FALSE}
+#Linear Regression Model 
+NOSalary= read.csv("/Users/Kevin/Desktop/School/Doing Data Science/Project 2/CaseStudy2CompSet No Salary.csv", header = TRUE)
+
+ggplot(data = Attrition, aes(x = Age, y = MonthlyIncome)) +
+  geom_point() +
+  stat_smooth(method = "lm", col = "red") +
+  theme(panel.background = element_rect(fill = "white"),
+        axis.line.x=element_line(),
+        axis.line.y=element_line()) +
+  ggtitle("Linear Model Fitted to Data") +
+  scale_y_continuous(label=comma)
+
+set.seed(100)
+splitPerc = .70
+trainAttrition= sample(1:dim(Attrition)[1],round(splitPerc * dim(Attrition)[1]))
+trainSalary = Attrition[trainAttrition,]
+testSalary = Attrition[-trainAttrition,]
+
+
+fit_1 <- lm(MonthlyIncome ~ Age, 
+            data = trainSalary)
+
+summary(fit_1)
+
+ggplot(data = Attrition, aes(x = Age, y = MonthlyIncome)) +
+  geom_point() +
+  stat_smooth(method = "lm", col = "red") +
+  theme(panel.background = element_rect(fill = "white"),
+        axis.line.x=element_line(),
+        axis.line.y=element_line()) +
+  ggtitle("Linear Model Fitted to Data") +
+  scale_y_continuous(label=comma)
+
+SalaryPreds = predict(fit_1, NOSalary)
+
+RMSE(Attrition$MonthlyIncome, SalaryPreds)
+#data.frame(NOSalary$ID,SalaryPreds)
+
+
+#Random Forest Model
+  #Train Data
+
+splitPerc = .70
+trainAttrition= sample(1:dim(Attrition)[1],round(splitPerc * dim(Attrition)[1]))
+trainSalary = Attrition[trainAttrition,]
+testSalary = Attrition[-trainAttrition,]
+str(trainSalary)
+
+EmpRandoSalary = randomForest(MonthlyIncome ~ .-Age, 
+                              data=trainSalary)
+
+PredictSalary = predict(EmpRandoSalary, 
+                          newdata= testSalary)
+  #Test Data
+RMSE(testSalary$MonthlyIncome, PredictSalary)
+PredDF = data.frame(MonthlyIncome=testSalary$MonthlyIncome, PredictSalary)
+PredDF %>% ggplot(aes(x=MonthlyIncome,y=PredictSalary)) + geom_point(aes(x=MonthlyIncome,y=PredictSalary)) + 
+  ggtitle("Relationship Between Predicted and Actuals") + xlab("Actual") + ylab("Predicted") + geom_smooth(method="lm") 
+#data.frame(testSalary$ID, PredictSalary)
+
+#RMSE of Random Forest model for predicting salary
+NOSalary$Attrition =  factor(as.character(NOSalary$Attrition), levels=c("Yes", "No"))
+SalaryRF <- randomForest(MonthlyIncome ~ .-Age, data=trainSalary)
+#importance(SalaryRF)
+#varImpPlot(SalaryRF)
+
+#Test on provided salary data set
+#str(NOSalary)
+#str(Attrition)
+PredictSalary2<- predict(SalaryRF, 
+                         newdata= NOSalary,
+                         importance=TRUE,ntree=500)
+summary(PredictSalary2)
+
+PredictionsAlbright <- data.frame(NOSalary$ID, PredictSalary2)
+write.csv(PredictionsAlbright,"/Users/Kevin/Desktop/School/Doing Data Science/Project 2/AlbrightSalaryPredictions.csv")
+
